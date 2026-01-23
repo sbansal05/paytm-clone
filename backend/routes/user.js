@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const zod = express("zod");
+const zod = require("zod");
 const { User } = require("../db");
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET } = process.env.JWT_SECRET;
+const bcrypt = require("bcrypt");
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const signupBody = zod.object({
     username: zod.string().email(),
@@ -31,9 +33,11 @@ router.post("/signup", async (req, res) => {
         })
     }
 
+    const hashedPassword = await bcrypt.hash(req.body.password, 10)
+
     const user = await User.create({
         username: req.body.username,
-        password: req.body.password,
+        password: hashedPassword,
         firstName: req.body.firstName,
         lastName: req.body.lastName
     })
@@ -50,7 +54,7 @@ router.post("/signup", async (req, res) => {
 })
 
 const signinBody = zod.object({
-    username: zod.string.email(),
+    username: zod.string().email(),
     password: zod.string()
 })
 
@@ -64,23 +68,30 @@ router.post("/signin", async (req, res) => {
 
     const user = await User.findOne({
         username: req.body.username,
-        password: req.body.password
     });
 
-    if(user) {
-        const token = jwt.sign({
-            userId: user._id
-        }, JWT_SECRET);
-
-        res.json({
-            token: token
+   if (!user) {
+    return res.status(401).json({
+        message: "Invalid credentials"
+    })
+   }
+    const passwordMatch = await bcrypt.compare(
+        req.body.password,
+        user.password
+    )
+    
+    if(!passwordMatch) {
+        return res.status(401).json({
+            message: "Invalid credentials"
         })
-        return;
     }
 
-    res.status(411).json({
-        message: "Error while logging in"
-    })
+    const token = jwt.sign(
+        { userId: user._id},
+        JWT_SECRET
+    );
+
+    res.json({ token });
 })
 
 

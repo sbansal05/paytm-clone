@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+mongoose.connect(process.env.DB_URL)
 const userSchema = new mongoose.Schema({
     username: {
         type: String,
@@ -29,8 +30,22 @@ const userSchema = new mongoose.Schema({
     }
 });
 
+const accountSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    balance: {
+        type: Number,
+        required: true
+    }
+});
+
+const Account = mongoose.model('Account', accountSchema);
 const User = mongoose.model('User', userSchema);
 
 module.exports = {
-	User
+	User,
+    Account
 };
